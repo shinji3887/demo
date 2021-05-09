@@ -114,6 +114,7 @@ gemnasium-maven-dependency_scanning:
     # override the analyzer image with a custom value. This may be subject to change or
     # breakage across GitLab releases.
     DS_ANALYZER_IMAGE: "$SECURE_ANALYZERS_PREFIX/gemnasium-maven:$DS_MAJOR_VERSION"
+    GEMNASIUM_DB_REMOTE_URL: "http://192.168.31.34/root/gemnasium-db.git"
   rules:
     - if: $DEPENDENCY_SCANNING_DISABLED
       when: never
