@@ -34,8 +34,6 @@ sast:
   # `rules` must be overridden explicitly by each child job
   # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
   script:
-    - chmod 777 mvnw
-    - env
     - /analyzer run
 
 spotbugs-sast:
