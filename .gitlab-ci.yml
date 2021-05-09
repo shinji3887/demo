@@ -34,7 +34,7 @@ sast:
   # `rules` must be overridden explicitly by each child job
   # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
   script:
-    - sleep 3000000
+    - mvn clean package
     - /analyzer run
 
 spotbugs-sast:
@@ -46,6 +46,7 @@ spotbugs-sast:
     # override the analyzer image with a custom value. This may be subject to change or
     # breakage across GitLab releases.
     SAST_ANALYZER_IMAGE: "$SECURE_ANALYZERS_PREFIX/spotbugs:$SAST_ANALYZER_IMAGE_TAG"
+    COMPILE: "false"
   rules:
     - if: $SAST_EXCLUDED_ANALYZERS =~ /spotbugs/
       when: never
