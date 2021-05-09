@@ -15,6 +15,16 @@ variables:
   SAST_ANALYZER_IMAGE_TAG: 2
   SCAN_KUBERNETES_MANIFESTS: "false"
 
+build:
+  image: maven:3.6-jdk-8-slim
+  stage: build
+  script:
+    - mvn package -Dmaven.repo.local=./.m2/repository
+  artifacts:
+    paths:
+      - .m2/
+      - target/
+
 sast:
   stage: test
   artifacts:
@@ -34,10 +44,11 @@ sast:
   # `rules` must be overridden explicitly by each child job
   # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
   script:
-    - mvn clean package
     - /analyzer run
 
 spotbugs-sast:
+  dependencies:
+    - build
   extends: .sast-analyzer
   image:
     name: "$SAST_ANALYZER_IMAGE"
@@ -46,6 +57,7 @@ spotbugs-sast:
     # override the analyzer image with a custom value. This may be subject to change or
     # breakage across GitLab releases.
     SAST_ANALYZER_IMAGE: "$SECURE_ANALYZERS_PREFIX/spotbugs:$SAST_ANALYZER_IMAGE_TAG"
+    MAVEN_REPO_PATH: ./.m2/repository
     COMPILE: "false"
   rules:
     - if: $SAST_EXCLUDED_ANALYZERS =~ /spotbugs/
