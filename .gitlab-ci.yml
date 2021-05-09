@@ -35,8 +35,7 @@ sast:
   # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
   script:
     - chmod 777 mvnw
-    - echo $JAVA_HOME
-    - echo $M2_HOME
+    - env
     - /analyzer run
 
 spotbugs-sast:
