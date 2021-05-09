@@ -15,14 +15,15 @@ variables:
   SAST_ANALYZER_IMAGE_TAG: 2
   SCAN_KUBERNETES_MANIFESTS: "false"
 
+cache:
+  paths:
+    - ./.m2/repository
+
 build:
   image: maven:3.6-jdk-8-slim
   stage: build
   script:
     - mvn package -Dmaven.repo.local=./.m2/repository
-  cache:
-    paths:
-      - ./.m2/repository
   artifacts:
     paths:
       - target/
