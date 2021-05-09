@@ -20,9 +20,11 @@ build:
   stage: build
   script:
     - mvn package -Dmaven.repo.local=./.m2/repository
+  cache:
+    paths:
+      - ./.m2/repository
   artifacts:
     paths:
-      - .m2/
       - target/
 
 sast:
