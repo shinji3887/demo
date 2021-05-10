@@ -115,10 +115,11 @@ gemnasium-maven-dependency_scanning:
     DS_ANALYZER_IMAGE: "$SECURE_ANALYZERS_PREFIX/gemnasium-maven:$DS_MAJOR_VERSION"
     GEMNASIUM_DB_REMOTE_URL: "http://192.168.31.34/root/gemnasium-db.git"
     SECURE_LOG_LEVEL: "debug"
-    MAVEN_REPO_PATH: ./.m2/repository
+    MAVEN_REPO_PATH: ".m2/repository"
+    MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
   cache:
     paths:
-      - ./.m2/repository
+      - .m2/repository
   rules:
     - if: $DEPENDENCY_SCANNING_DISABLED
       when: never
