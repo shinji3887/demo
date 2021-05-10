@@ -115,6 +115,7 @@ gemnasium-maven-dependency_scanning:
     # breakage across GitLab releases.
     DS_ANALYZER_IMAGE: "$SECURE_ANALYZERS_PREFIX/gemnasium-maven:$DS_MAJOR_VERSION"
     GEMNASIUM_DB_REMOTE_URL: "http://192.168.31.34/root/gemnasium-db.git"
+    SECURE_LOG_LEVEL: "debug"
   rules:
     - if: $DEPENDENCY_SCANNING_DISABLED
       when: never
