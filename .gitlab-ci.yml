@@ -108,6 +108,8 @@ dependency_scanning:
     - /analyzer run
 
 gemnasium-maven-dependency_scanning:
+  dependencies:
+    - build
   extends: .ds-analyzer
   image:
     name: "$DS_ANALYZER_IMAGE"
