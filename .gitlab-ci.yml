@@ -93,6 +93,7 @@ dependency_scanning:
   artifacts:
     reports:
       dependency_scanning: gl-dependency-scanning-report.json
+  dependencies: []
   rules:
     - when: never
 
