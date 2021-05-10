@@ -102,7 +102,6 @@ dependency_scanning:
   # `rules` must be overridden explicitly by each child job
   # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
   script:
-    - sleep 300000
     - /analyzer run
 
 gemnasium-maven-dependency_scanning:
