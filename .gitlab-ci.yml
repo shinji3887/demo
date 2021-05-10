@@ -52,7 +52,6 @@ sast:
   # `rules` must be overridden explicitly by each child job
   # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
   script:
-    - sleep 300000
     - /analyzer run
 
 spotbugs-sast:
@@ -94,7 +93,6 @@ dependency_scanning:
   artifacts:
     reports:
       dependency_scanning: gl-dependency-scanning-report.json
-  dependencies: []
   rules:
     - when: never
 
@@ -108,8 +106,6 @@ dependency_scanning:
     - /analyzer run
 
 gemnasium-maven-dependency_scanning:
-  dependencies:
-    - build
   extends: .ds-analyzer
   image:
     name: "$DS_ANALYZER_IMAGE"
