@@ -137,9 +137,9 @@ code_quality:
   stage: test
   image: docker:19.03.12
   allow_failure: true
+  tags:
+    - cq-sans-dind
   variables:
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_CERTDIR: ""
     CODE_QUALITY_IMAGE: "registry.gitlab.com/gitlab-org/ci-cd/codequality:0.85.23"
   needs: []
   script:
