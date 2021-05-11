@@ -144,12 +144,6 @@ code_quality:
   needs: []
   script:
     - export SOURCE_CODE=$PWD
-    - |
-      if ! docker info &>/dev/null; then
-        if [ -z "$DOCKER_HOST" -a "$KUBERNETES_PORT" ]; then
-          export DOCKER_HOST='tcp://localhost:2375'
-        fi
-      fi
     - | # this is required to avoid undesirable reset of Docker image ENV variables being set on build stage
       function propagate_env_vars() {
         CURRENT_ENV=$(printenv)
