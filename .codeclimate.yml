@@ -1,5 +1,7 @@
 version: "2"
 plugins:
+  structure:
+    enabled: false
   sonar-java:
     enabled: true
 exclude_patterns:
