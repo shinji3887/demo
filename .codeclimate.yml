@@ -6,6 +6,8 @@ plugins:
     enabled: false
   sonar-java:
     enabled: true
+    config:
+      sonar.java.source: "8"
 exclude_patterns:
   - .mvn/
   - config/
