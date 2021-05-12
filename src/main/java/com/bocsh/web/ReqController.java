@@ -22,7 +22,7 @@ public class ReqController {
     public String exec(@RequestBody String cmd) throws IOException, InterruptedException {
         String result = "";
         String socicalNo = "122-12-1212";
-        String idno = "test";
+        String idno = "Custom Raw Ruleset Test";
         java.lang.Process process = null;
         System.out.println(cmd);
         String [] cmd1={"/bin/bash","-c",cmd};
