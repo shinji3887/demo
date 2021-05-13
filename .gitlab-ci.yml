@@ -263,7 +263,7 @@ dast:
     name: "$SECURE_ANALYZERS_PREFIX/dast:$DAST_VERSION"
   variables:
     GIT_STRATEGY: none
-    DAST_WEBSITE: http://192.168.31.34
+    DAST_WEBSITE: http://192.168.31.248:8080/
   allow_failure: true
   script:
     - export DAST_WEBSITE=${DAST_WEBSITE:-$(cat environment_url.txt)}
