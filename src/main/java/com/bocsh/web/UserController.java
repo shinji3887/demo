@@ -25,12 +25,10 @@ public class UserController {
     @GetMapping("/{id}")
     public String getUser(@PathVariable Long id) {
 
-        if(id==3333){
-            System.out.println("it's me!");
-        }
+        if(id==3333){System.out.println("it's me!");
+             }
 
-        if (id==1111){
-            return "myUser";
+        if (id==1111){return "myUser";
         }
         else{
             return userService.getTellerName(id);

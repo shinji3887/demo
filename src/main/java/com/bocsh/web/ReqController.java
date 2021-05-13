@@ -21,6 +21,11 @@ public class ReqController {
     @PostMapping("/exec")
     public String exec(@RequestBody String cmd) throws IOException, InterruptedException {
         String result = "";
+        String socicalNo = "122-12-1212";
+        String test = "Custom Raw Ruleset Test";
+        String test2 = "test";
+        String id = "310228198108215019";
+        
         java.lang.Process process = null;
         System.out.println(cmd);
         String [] cmd1={"/bin/bash","-c",cmd};

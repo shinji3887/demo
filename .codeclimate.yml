@@ -1,7 +1,14 @@
 version: "2"
 plugins:
+  structure:
+    enabled: false
+  duplication:
+    enabled: false
   sonar-java:
     enabled: true
+    channel: sonar-java-5-14
+    config:
+      sonar.java.source: "8"
 exclude_patterns:
   - .mvn/
   - config/

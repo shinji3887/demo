@@ -15,6 +15,30 @@ variables:
   SAST_ANALYZER_IMAGE_TAG: 2
   SCAN_KUBERNETES_MANIFESTS: "false"
 
+  DS_DEFAULT_ANALYZERS: "bundler-audit, retire.js, gemnasium, gemnasium-maven, gemnasium-python"
+  DS_EXCLUDED_PATHS: "spec, test, tests, tmp"
+  DS_MAJOR_VERSION: 2
+
+  SECRETS_ANALYZER_VERSION: "3"
+  SECRET_DETECTION_EXCLUDED_PATHS: ""
+
+  CS_MAJOR_VERSION: 3
+
+  DAST_VERSION: 1
+
+cache:
+  paths:
+    - ./.m2/repository
+
+build:
+  image: maven:3.6-jdk-8-slim
+  stage: build
+  script:
+    - mvn package -Dmaven.repo.local=./.m2/repository
+  artifacts:
+    paths:
+      - target/
+
 sast:
   stage: test
   artifacts:
@@ -34,10 +58,11 @@ sast:
   # `rules` must be overridden explicitly by each child job
   # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
   script:
-    - sleep 3000000
     - /analyzer run
 
 spotbugs-sast:
+  dependencies:
+    - build
   extends: .sast-analyzer
   image:
     name: "$SAST_ANALYZER_IMAGE"
@@ -46,6 +71,8 @@ spotbugs-sast:
     # override the analyzer image with a custom value. This may be subject to change or
     # breakage across GitLab releases.
     SAST_ANALYZER_IMAGE: "$SECURE_ANALYZERS_PREFIX/spotbugs:$SAST_ANALYZER_IMAGE_TAG"
+    MAVEN_REPO_PATH: ./.m2/repository
+    COMPILE: "false"
   rules:
     - if: $SAST_EXCLUDED_ANALYZERS =~ /spotbugs/
       when: never
@@ -63,3 +90,211 @@ spotbugs-sast:
         - '**/*.java'
         - '**/*.scala'
         - '**/*.kt'
+
+dependency_scanning:
+  stage: test
+  script:
+    - echo "$CI_JOB_NAME is used for configuration only, and its script should not be executed"
+    - exit 1
+  artifacts:
+    reports:
+      dependency_scanning: gl-dependency-scanning-report.json
+  dependencies: []
+  rules:
+    - when: never
+
+.ds-analyzer:
+  extends: dependency_scanning
+  allow_failure: true
+  # `rules` must be overridden explicitly by each child job
+  # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
+  script:
+    - /analyzer run
+
+gemnasium-maven-dependency_scanning:
+  extends: .ds-analyzer
+  image:
+    name: "$DS_ANALYZER_IMAGE"
+  variables:
+    # DS_ANALYZER_IMAGE is an undocumented variable used internally to allow QA to
+    # override the analyzer image with a custom value. This may be subject to change or
+    # breakage across GitLab releases.
+    DS_ANALYZER_IMAGE: "$SECURE_ANALYZERS_PREFIX/gemnasium-maven:$DS_MAJOR_VERSION"
+    GEMNASIUM_DB_REMOTE_URL: "http://192.168.31.34/root/gemnasium-db.git"
+    SECURE_LOG_LEVEL: "debug"
+    MAVEN_REPO_PATH: ".m2/repository"
+    MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  cache:
+    paths:
+      - .m2/repository
+  rules:
+    - if: $DEPENDENCY_SCANNING_DISABLED
+      when: never
+    - if: $CI_COMMIT_BRANCH &&
+          $GITLAB_FEATURES =~ /\bdependency_scanning\b/ &&
+          $DS_DEFAULT_ANALYZERS =~ /gemnasium-maven/
+      exists:
+        - '{build.gradle,*/build.gradle,*/*/build.gradle}'
+        - '{build.gradle.kts,*/build.gradle.kts,*/*/build.gradle.kts}'
+        - '{build.sbt,*/build.sbt,*/*/build.sbt}'
+        - '{pom.xml,*/pom.xml,*/*/pom.xml}'
+
+code_quality:
+  stage: test
+  image: docker:19.03.12
+  allow_failure: true
+  tags:
+    - cq-sans-dind
+  variables:
+    CODE_QUALITY_IMAGE: "registry.gitlab.com/gitlab-org/ci-cd/codequality:0.85.23"
+  needs: []
+  script:
+    - export SOURCE_CODE=$PWD
+    - | # this is required to avoid undesirable reset of Docker image ENV variables being set on build stage
+      function propagate_env_vars() {
+        CURRENT_ENV=$(printenv)
+
+        for VAR_NAME; do
+          echo $CURRENT_ENV | grep "${VAR_NAME}=" > /dev/null && echo "--env $VAR_NAME "
+        done
+      }
+    - docker pull --quiet "$CODE_QUALITY_IMAGE"
+    - |
+      docker run \
+        $(propagate_env_vars \
+          SOURCE_CODE \
+          TIMEOUT_SECONDS \
+          CODECLIMATE_DEBUG \
+          CODECLIMATE_DEV \
+          REPORT_STDOUT \
+          REPORT_FORMAT \
+          ENGINE_MEMORY_LIMIT_BYTES \
+          CODECLIMATE_PREFIX \
+        ) \
+        --volume "$PWD":/code \
+        --volume /var/run/docker.sock:/var/run/docker.sock \
+        "$CODE_QUALITY_IMAGE" /code
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
+    expire_in: 1 week
+  dependencies: []
+  rules:
+    - if: '$CODE_QUALITY_DISABLED'
+      when: never
+    - if: '$CI_COMMIT_TAG || $CI_COMMIT_BRANCH'
+
+.secret-analyzer:
+  stage: test
+  image: "$SECURE_ANALYZERS_PREFIX/secrets:$SECRETS_ANALYZER_VERSION"
+  services: []
+  allow_failure: true
+  # `rules` must be overridden explicitly by each child job
+  # see https://gitlab.com/gitlab-org/gitlab/-/issues/218444
+  artifacts:
+    reports:
+      secret_detection: gl-secret-detection-report.json
+
+secret_detection_default_branch:
+  extends: .secret-analyzer
+  rules:
+    - if: $SECRET_DETECTION_DISABLED
+      when: never
+    - if: $CI_DEFAULT_BRANCH == $CI_COMMIT_BRANCH
+  script:
+    - /analyzer run
+
+secret_detection:
+  extends: .secret-analyzer
+  rules:
+    - if: $SECRET_DETECTION_DISABLED
+      when: never
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+  script:
+    - if [[ $CI_COMMIT_TAG ]]; then echo "Skipping Secret Detection for tags. No code changes have occurred."; exit 0; fi
+    - git fetch origin $CI_DEFAULT_BRANCH $CI_COMMIT_REF_NAME
+    - git log --left-right --cherry-pick --pretty=format:"%H" refs/remotes/origin/$CI_DEFAULT_BRANCH...refs/remotes/origin/$CI_COMMIT_REF_NAME > "$CI_COMMIT_SHA"_commit_list.txt
+    - export SECRET_DETECTION_COMMITS_FILE="$CI_COMMIT_SHA"_commit_list.txt
+    - /analyzer run
+    - rm "$CI_COMMIT_SHA"_commit_list.txt
+
+.cs_common:
+  stage: test
+  image: "$CS_ANALYZER_IMAGE"
+  variables:
+    # Override the GIT_STRATEGY variable in your `.gitlab-ci.yml` file and set it to `fetch` if you want to provide a `clair-whitelist.yml`
+    # file. See https://docs.gitlab.com/ee/user/application_security/container_scanning/index.html#overriding-the-container-scanning-template
+    # for details
+    GIT_STRATEGY: none
+    # CS_ANALYZER_IMAGE is an undocumented variable used internally to allow QA to
+    # override the analyzer image with a custom value. This may be subject to change or
+    # breakage across GitLab releases.
+    CS_ANALYZER_IMAGE: $SECURE_ANALYZERS_PREFIX/$CS_PROJECT:$CS_MAJOR_VERSION
+  allow_failure: true
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.json
+  dependencies: []
+
+container_scanning:
+  extends: .cs_common
+  variables:
+    # By default, use the latest clair vulnerabilities database, however, allow it to be overridden here with a specific image
+    # to enable container scanning to run offline, or to provide a consistent list of vulnerabilities for integration testing purposes
+    CLAIR_DB_IMAGE_TAG: "latest"
+    CLAIR_DB_IMAGE: "$SECURE_ANALYZERS_PREFIX/clair-vulnerabilities-db:$CLAIR_DB_IMAGE_TAG"
+    CS_PROJECT: 'klar'
+    SECURE_LOG_LEVEL: "debug"
+  services:
+    - name: $CLAIR_DB_IMAGE
+      alias: clair-vulnerabilities-db
+  script:
+    - /analyzer run
+  rules:
+    - if: $CONTAINER_SCANNING_DISABLED
+      when: never
+    - if: $CI_COMMIT_BRANCH &&
+          $GITLAB_FEATURES =~ /\bcontainer_scanning\b/ &&
+          $CS_MAJOR_VERSION =~ /^[0-3]$/
+
+dast:
+  stage: build
+  image:
+    name: "$SECURE_ANALYZERS_PREFIX/dast:$DAST_VERSION"
+  variables:
+    GIT_STRATEGY: none
+    DAST_WEBSITE: http://192.168.31.248:8080/
+  allow_failure: true
+  script:
+    - export DAST_WEBSITE=${DAST_WEBSITE:-$(cat environment_url.txt)}
+    - if [ -z "$DAST_WEBSITE$DAST_API_SPECIFICATION" ]; then echo "Either DAST_WEBSITE or DAST_API_SPECIFICATION must be set. See https://docs.gitlab.com/ee/user/application_security/dast/#configuration for more details." && exit 1; fi
+    - /analyze
+  artifacts:
+    reports:
+      dast: gl-dast-report.json
+  rules:
+    - if: $DAST_DISABLED
+      when: never
+    - if: $DAST_DISABLED_FOR_DEFAULT_BRANCH &&
+          $CI_DEFAULT_BRANCH == $CI_COMMIT_REF_NAME
+      when: never
+    - if: $CI_DEFAULT_BRANCH != $CI_COMMIT_REF_NAME &&
+          $REVIEW_DISABLED && $DAST_WEBSITE == null &&
+          $DAST_API_SPECIFICATION == null
+      when: never
+    - if: $CI_COMMIT_BRANCH &&
+          $CI_KUBERNETES_ACTIVE &&
+          $GITLAB_FEATURES =~ /\bdast\b/
+    - if: $CI_COMMIT_BRANCH &&
+          $GITLAB_FEATURES =~ /\bdast\b/ &&
+          $DAST_WEBSITE
+    - if: $CI_COMMIT_BRANCH &&
+          $GITLAB_FEATURES =~ /\bdast\b/ &&
+          $DAST_API_SPECIFICATION
+
+
+
+
+
+
+
