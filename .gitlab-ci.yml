@@ -242,6 +242,7 @@ container_scanning:
     CLAIR_DB_IMAGE_TAG: "latest"
     CLAIR_DB_IMAGE: "$SECURE_ANALYZERS_PREFIX/clair-vulnerabilities-db:$CLAIR_DB_IMAGE_TAG"
     CS_PROJECT: 'klar'
+    SECURE_LOG_LEVEL: "debug"
   services:
     - name: $CLAIR_DB_IMAGE
       alias: clair-vulnerabilities-db
